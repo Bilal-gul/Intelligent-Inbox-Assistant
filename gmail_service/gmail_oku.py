@@ -17,16 +17,21 @@ from googleapiclient.errors import HttpError
 
 
 KLASOR = Path(__file__).resolve().parent
-CIKTI_DOSYASI = KLASOR / "hazir_epostalar.json"
+VERI_DIZINI = Path(os.environ.get("GMAIL_DATA_DIR", str(KLASOR)))
+VERI_DIZINI.mkdir(parents=True, exist_ok=True)
+CIKTI_DOSYASI = VERI_DIZINI / "hazir_epostalar.json"
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+KIMLIK_DOSYASI = Path(os.environ.get(
+    "GMAIL_CREDENTIALS_FILE", str(KLASOR / "credentials.json")
+))
 ANALIZ_API_URL = os.environ.get(
     "ANALIZ_API_URL",
-    "http://127.0.0.1:8002/api/v1/emails/analyze"
+    "http://analysis_api:8000/api/v1/emails/analyze"
 )
 
 def gmail_baglan():
     kimlik = None
-    token_dosyasi = KLASOR / "token.json"
+    token_dosyasi = VERI_DIZINI / "token.json"
 
     if token_dosyasi.exists():
         kimlik = Credentials.from_authorized_user_file(
@@ -38,7 +43,7 @@ def gmail_baglan():
             kimlik.refresh(Request())
         else:
             izin_akisi = InstalledAppFlow.from_client_secrets_file(
-                str(KLASOR / "credentials.json"),
+                str(KIMLIK_DOSYASI),
                 SCOPES
             )
             kimlik = izin_akisi.run_local_server(port=0)
@@ -110,7 +115,7 @@ def epostayi_hazirla(veri):
         tz=timezone.utc
     ).isoformat()
 
-    html_govde = mesaj.get_body(preferencelist=("html",))
+    govde = mesaj.get_body(preferencelist=("html", "plain"))
 
     return {
         "source_email_id": veri["id"],
@@ -119,11 +124,7 @@ def epostayi_hazirla(veri):
         "recipients": alicilar,
         "subject": str(mesaj.get("Subject", "")),
         "received_at": alinma_zamani,
-        "body_html": (
-            html_govde.get_content()
-            if html_govde is not None
-            else None
-        )
+        "body_html": govde.get_content() if govde is not None else ""
     }
 
 
@@ -230,7 +231,7 @@ def main():
 
 
 def analizleri_gonder():
-    durum_dosyasi = KLASOR / "analiz_sonuclari.json"
+    durum_dosyasi = VERI_DIZINI / "analiz_sonuclari.json"
 
     try:
         epostalar = kayitlari_oku()
@@ -330,6 +331,11 @@ def analizleri_gonder():
 
 
 if __name__ == "__main__":
+    if os.environ.get("GMAIL_AUTH_ONLY") == "1":
+        gmail_baglan()
+        print(f"Gmail OAuth tamamlandı. Token dosyası: {VERI_DIZINI / 'token.json'}")
+        raise SystemExit(0)
+
     print("Program başlatıldı. Durdurmak için Ctrl+C.")
 
     try:

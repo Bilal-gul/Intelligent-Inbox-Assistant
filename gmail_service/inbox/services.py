@@ -32,6 +32,25 @@ def get_emails():
             identity = item.get('email_id', item.get('id', item.get('source_email_id')))
             if identity is None or isinstance(identity, (dict, list, bool)):
                 raise ValueError('E-posta kimliği eksik veya geçersiz.')
+
+            # The DB API returns category fields flat; the inbox UI consumes
+            # the same nested shape produced by the analysis API.
+            detail, _, _ = get_email(identity)
+            if detail:
+                item.update(detail)
+
+            tags = item.get('tags') or []
+            item['classification'] = {
+                'primary_category': item.get('primary_category'),
+                'email_type': item.get('email_type'),
+                'tags': [
+                    tag.get('name', '') if isinstance(tag, dict) else str(tag)
+                    for tag in tags
+                ],
+            }
+            item.setdefault('tasks', [])
+            item.setdefault('events', [])
+            item.setdefault('evidence', [])
         return data, None
     except (URLError, OSError, ValueError, TypeError):
         return [], 'E-postalar alınamadı. API bağlantısını ve yanıt biçimini kontrol edin.'
