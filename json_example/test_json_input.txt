@@ -1,0 +1,11 @@
+{
+  "source_email_id": "msg-101202",
+  "thread_id": "thread-8899",
+  "sender": "prof.ahmet@erciyes.edu.tr",
+  "recipients": [
+    "bilal.gul@erciyes.edu.tr"
+  ],
+  "subject": "Yazılım Mühendisliği Proje Sunumu ve Rapor Teslimi",
+  "received_at": "2026-10-23T10:00:00Z",
+  "body_html": "<p>Merhaba Bilal,</p><p>Yazılım projesi sunumumuz <strong>26 Ekim Pazartesi günü saat 15:00'te</strong> Amfi 2'de yapılacaktır.</p><p>Lütfen sunum öncesinde projenin mimari raporunu hazırlayıp en geç <strong>25 Ekim Pazar saat 23:59'a kadar</strong> sisteme yükle.</p><p>Başarılar.</p>"
+}
