@@ -1,0 +1,74 @@
+services:
+  database_api:
+    build:
+      context: ./database_api
+    environment:
+      DB_SERVER: ${DB_SERVER:-host.docker.internal,1433}
+      DB_NAME: ${DB_NAME:-Intelligent_Inbox_Assistant}
+      DB_USER: ${DB_USER:-}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_TRUSTED_CONNECTION: "no"
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  analysis_api:
+    build:
+      context: ./analysis_api
+    env_file:
+      - ./analysis_api/.env
+    environment:
+      DB_SERVICE_URL: http://database_api:8000/api/v1/analyses
+    ports:
+      - "8002:8000"
+    depends_on:
+      database_api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gmail_service:
+    build:
+      context: ./gmail_service
+    environment:
+      ANALIZ_API_URL: http://analysis_api:8000/api/v1/emails/analyze
+      EMAILS_API_URL: http://database_api:8000/api/v1/emails
+      GMAIL_DATA_DIR: /data
+      GMAIL_CREDENTIALS_FILE: /run/secrets/google_credentials.json
+    volumes:
+      - ./gmail_data:/data
+      - ./gmail_service/credentials.json:/run/secrets/google_credentials.json:ro
+    depends_on:
+      analysis_api:
+        condition: service_healthy
+      database_api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./gmail_service
+      dockerfile: Dockerfile.web
+    environment:
+      EMAILS_API_URL: http://database_api:8000/api/v1/emails
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-development-only}
+      DEBUG: "true"
+    ports:
+      - "8003:8001"
+    depends_on:
+      database_api:
+        condition: service_healthy
